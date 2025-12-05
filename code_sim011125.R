@@ -1,0 +1,118 @@
+
+######################
+
+# using bayesLife version 5.3-0
+library(bayesLife)
+
+e0dir <- "sim20251101"
+
+seed <- 20251101
+my_file <- "data/my_e0_single_years.txt"
+
+t1 <- Sys.time()
+
+# simulate MCMC using female data
+m <- run.e0.mcmc(iter = 210000, thin = 50,
+                 my.e0.file =my_file,
+                 nr.chains = 3, output.dir = e0dir, replace.output = TRUE,
+                 start.year = 1873, present.year = 2024, wpp.year = 2024, 
+                 annual = TRUE, seed = seed,use.wpp.data = FALSE,
+                parallel = TRUE # if set to TRUE, run it from a command line and NOT from RStudio
+)
+men_file <- "data/my_eM0_single_years.txt"
+
+pred <- e0.predict(sim.dir = e0dir, end.year = 2100, replace.output = TRUE,
+                   burnin = 10000, nr.traj = 1000, my.e0.file = men_file,seed = seed, 
+                   predict.jmale	=TRUE)
+
+nat.e0.pred <- get.e0.prediction(e0dir)
+e0.trajectories.plot(nat.e0.pred, 246, pi = 80, 
+                     col = rep("darkblue", 5), nr.traj = 0, 
+                     show.legend = FALSE, both.sexes = TRUE)
+
+pred <- e0.predict(sim.dir = e0dir, end.year = 2100, replace.output = TRUE,
+                   burnin = 10000, nr.traj = 10, 
+                   seed = seed,    predict.jmale = FALSE)
+
+nat.e0.pred <- get.e0.prediction(e0dir)
+e0.trajectories.plot(nat.e0.pred, 246, pi = 50, 
+                     col = rep("darkblue", 5), nr.traj = 0, 
+                     show.legend = FALSE, both.sexes = TRUE)
+
+pred <- e0.predict(sim.dir = e0dir, end.year = 2100, replace.output = TRUE,
+                   burnin = 100, nr.traj = 10, my.e0.file = my_file,seed = seed, 
+                   predict.jmale	=TRUE)
+head(read.delim(my_file, check.names = FALSE))
+
+both.pred <- e0.jmale.predict(pred, my.e0.file = my_file)
+, countries.index = c("246"))
+
+nat.e0.pred <- get.e0.prediction(e0dir)
+e0.trajectories.plot(nat.e0.pred, 246, pi = 80, 
+                     col = rep("darkblue", 5), nr.traj = 0, 
+                     show.legend = FALSE, both.sexes = TRUE)
+
+# generate MCMCs and projections for HIV/AIDS countries
+# (MCMCs for small countries were already generated within the previous step)
+data(include_2024, package = "bayesLife")
+countries <- subset(include_2024, include_code == 3)$country_code
+me0 <- run.e0.mcmc.extra(sim.dir = e0dir, countries = countries)
+my_file <- "data/my_eM0_single_years.txt"
+
+both.pred <- e0.jmale.predict(pred, my.e0.file = my_file)
+
+t2 <- Sys.time()
+
+cat("\nEstimation time: ", t2-t1)
+
+# generate predictions for all countries (female and male)
+pred <- e0.predict(sim.dir = e0dir, end.year = 2100, replace.output = TRUE,
+                   burnin = 10, nr.traj = 10, seed = seed)
+my_file <- "data/my_eM0_single_years.txt"
+
+both.pred <- e0.jmale.predict(pred, my.e0.file = my_file)
+m <- get.e0.mcmc(e0dir)
+
+fit <- e0.jmale.estimate(m, verbose = TRUE, countries.index	= 246)
+
+nat.e0.pred <- get.e0.prediction(e0dir)
+e0.trajectories.plot(nat.e0.pred, 246, pi = 80, 
+                     col = rep("darkblue", 5), nr.traj = 0, 
+                     show.legend = FALSE, both.sexes = TRUE)
+
+# align medians with to WPP 2024 middle series
+e0.shift.prediction.to.wpp(e0dir, stat = "mean") # female
+e0.shift.prediction.to.wpp(e0dir, stat = "mean", joint.male = TRUE) # male 
+
+# to remove the adjustment, run 
+# e0.median.reset(e0dir) # female
+# e0.median.reset(e0dir, joint.male = TRUE) # female
+
+t3 <- Sys.time()
+cat("\nProjection time: ", t3-t2)
+cat("\nTotal time: ", t3-t1)
+
+# How to retrieve predictions
+#################################
+# Retrieve the MCMC and prediction objects using 
+m <- get.e0.mcmc(e0dir)
+pred <- get.e0.prediction(e0dir) # contains both sexes
+predM <- get.e0.prediction(e0dir, joint.male = TRUE) # extract only male prediction object
+
+## plotting projections
+# e0.trajectories.plot(pred, "Sweden", nr.traj = 20, both.sexes = TRUE)
+
+## show table with results
+# e0.trajectories.table(pred, "Japan", both.sexes = TRUE)
+
+## extract trajectories for Ireland, here using ISO code
+# trajF <- get.e0.trajectories(pred, "IRL") # female 
+# trajM <- get.e0.trajectories(predM, "IRL") # male 
+
+## projection maps
+# e0.ggmap(pred, year = 2050)
+# e0.map.gvis(pred, year = 2100) # interactive
+
+## convert trajectories for all countries and each sex into an ASCII files
+# convert.e0.trajectories(dir = e0dir, n = 1000, output.dir = ".", verbose = TRUE)
+
