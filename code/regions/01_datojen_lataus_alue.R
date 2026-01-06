@@ -96,7 +96,7 @@ popF <- pop |>
 write_delim(popF, "data/alue/popF.txt", delim = "\t", na = "", quote_escape = "none")
 
 popM <- pop |>
-  filter(sex == "Naiset") |>
+  filter(sex == "Miehet") |>
   select(!sex)
 
 write_delim(popF, "data/alue/popM.txt", delim = "\t", na = "", quote_escape = "none")
