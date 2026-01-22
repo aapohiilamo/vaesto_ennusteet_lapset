@@ -26,14 +26,31 @@ px_data <-
 
 px_data_frame <- as.data.frame(px_data, column.name.type = "text", variable.value.type = "text")
 
+#väestön ennakkotiedot
+
+pxweb_query_list <- 
+  list("Kuukausi"=c("2025M12"),
+       "Alue"=c("SSS"),
+       "Sukupuoli"=c("SSS","1","2"),
+       "Ikä"=c("SSS","000","001","002","003","004","005","006","007","008","009","010","011","012","013","014","015","016","017","018","019","020","021","022","023","024","025","026","027","028","029","030","031","032","033","034","035","036","037","038","039","040","041","042","043","044","045","046","047","048","049","050","051","052","053","054","055","056","057","058","059","060","061","062","063","064","065","066","067","068","069","070","071","072","073","074","075","076","077","078","079","080","081","082","083","084","085","086","087","088","089","090","091","092","093","094","095","096","097","098","099","100-"),
+       "Tiedot"=c("vaesto"))
+px_data <- 
+  pxweb_get(url = "https://statfin.stat.fi/PXWeb/api/v1/fi/StatFin/vamuu/statfin_vamuu_pxt_11lj.px",
+            query = pxweb_query_list)
+px_data_frame <- as.data.frame(px_data, column.name.type = "text", variable.value.type = "text") |>
+  mutate(Vuosi="2025") |> 
+  rename(pop=Väkiluku)|>
+  bind_rows(px_data_frame |> 
+              rename(pop='Väestö 31.12.')) 
+
 vaesto <- px_data_frame|> 
   filter(Ikä!="Yhteensä") |>
   rename(Kunta=Alue,
-         pop='Väestö 31.12.',
          age=Ikä)|>
   mutate(age=case_when(age=="100 -"~100, TRUE~as.numeric(age))) |>
   mutate(name="Finland") |>
-  mutate(country_code=246)
+  mutate(country_code=246) |>
+  arrange(Vuosi)
 
 popF <- vaesto |>
   filter(Sukupuoli == "Naiset") |>
@@ -72,13 +89,13 @@ pop_filtered <- pop_data |>
   mutate(code = as.character(countrycode(iso2, origin = "iso2c", destination = "un")))
 
 fin_mig_2024 <- tibble(code = "246", year = 2024, migration = 47051)
-fin_pop_2025 <- tibble(code = "246", year = 2025, population = 5635971)
+fin_pop_2025 <- tibble(code = "246", year = 2025, population = 5656900)
 
-fin_mig_2025 <- tibble(code = "246", year = 2025, migration = 34000)
-fin_pop_2026 <- tibble(code = "246", year = 2026, population = 5635971)
+fin_mig_2025 <- tibble(code = "246", year = 2025, migration = 34852)
+fin_pop_2026 <- tibble(code = "246", year = 2026, population = 5656900)
 
-net_mig_filtered <- bind_rows(net_mig_filtered |> select(code, year, migration), fin_mig_2024,fin_mig_2025)
-pop_filtered <- bind_rows(pop_filtered |> select(code, year, population), fin_pop_2025, fin_pop_2026)
+net_mig_filtered <- bind_rows(net_mig_filtered |> select(code, year, migration), fin_mig_2025)
+pop_filtered <- bind_rows(pop_filtered |> select(code, year, population),  fin_pop_2026)
 
 pop_shifted <- pop_filtered |>
   rename(year_plus1 = year, population_te = population)
@@ -87,7 +104,7 @@ mig_with_pop <- net_mig_filtered |>
   left_join(pop_shifted, by = c("code", "year" = "year_plus1"))
 
 mig_rates <- mig_with_pop |>
-  mutate(rate = migration / (population_te - migration)) |>
+  mutate(rate = migration / (population_te )) |>
   select(code, year, rate)
 
 mig_rates_named <- mig_rates |>
